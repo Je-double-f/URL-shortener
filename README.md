@@ -1,1 +1,1 @@
-# You can skip this, i'm just starting
+# Trying to realize a pet-project
