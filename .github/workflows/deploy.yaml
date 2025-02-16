@@ -1,0 +1,76 @@
+name: Deploy App
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to deploy'
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HOST: 5.35.87.29
+      DEPLOY_DIRECTORY: /root/apps/url-shortener
+      CONFIG_PATH: /root/apps/url-shortener/config/prod.yaml
+      ENV_FILE_PATH: /root/apps/url-shortener/config.env
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.tag }}
+
+      - name: Check if tag exists
+        run: |
+          git fetch --all --tags
+          if ! git tag | grep -q "^${{ github.event.inputs.tag }}$"; then
+            echo "error: Tag '${{ github.event.inputs.tag }}' not found"
+            exit 1
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.22.2
+
+      - name: Build app
+        run: |
+          go mod download
+          go build -o url-shortener ./cmd/url-shortener
+
+      - name: Deploy to VM using password
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ssh rsync sshpass
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no root@${{ env.HOST }} "mkdir -p ${{ env.DEPLOY_DIRECTORY }}"
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" rsync -avz -e 'ssh -o StrictHostKeyChecking=no' --exclude='.git' ./ root@${{ env.HOST }}:${{ env.DEPLOY_DIRECTORY }}
+        env:
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+      - name: Remove old systemd service file
+        run: |
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no root@${{ env.HOST }} "rm -f /etc/systemd/system/url-shortener.service"
+
+      - name: List workspace contents
+        run: |
+          echo "Listing deployment folder contents:"
+          ls -la ${{ github.workspace }}/deployment
+
+      - name: Create environment file on server
+        run: |
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no root@${{ env.HOST }} "\
+          touch ${{ env.ENV_FILE_PATH }} && \
+          chmod 600 ${{ env.ENV_FILE_PATH }} && \
+          echo 'CONFIG_PATH=${{ env.CONFIG_PATH }}' > ${{ env.ENV_FILE_PATH }} && \
+          echo 'HTTP_SERVER_PASSWORD=${{ secrets.AUTH_PASS }}' >> ${{ env.ENV_FILE_PATH }}"
+
+      - name: Copy systemd service file
+        run: |
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no ${{ github.workspace }}/deployment/url-shortener.service root@${{ env.HOST }}:/tmp/url-shortener.service
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no root@${{ env.HOST }} "mv /tmp/url-shortener.service /etc/systemd/system/url-shortener.service"
+
+      - name: Start application
+        run: |
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no root@${{ env.HOST }} "systemctl daemon-reload && systemctl restart url-shortener.service"
