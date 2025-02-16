@@ -70,7 +70,7 @@ func TestSaveHandler(t *testing.T) {
 					Once()
 			}
 
-			handler := save.New(slogdiscard.NewDiscardLogger(), urlSaverMock)
+			handler := save.New(slogdiscard.NewDiscardLogger(), urlSaverMock, nil)
 
 			input := fmt.Sprintf(`{"url": "%s", "alias": "%s"}`, tc.url, tc.alias)
 

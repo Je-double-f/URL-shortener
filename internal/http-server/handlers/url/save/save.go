@@ -1,19 +1,21 @@
 package save
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
+	"time"
+
+	resp "url-shortener/internal/lib/api/response"
+	generatingalias "url-shortener/internal/lib/generating_alias"
+	"url-shortener/internal/lib/logger/sl"
+	"url-shortener/internal/storage"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/exp/slog"
-
-	resp "url-shortener/internal/lib/api/response"
-	"url-shortener/internal/lib/logger/sl"
-	"url-shortener/internal/lib/random"
-	"url-shortener/internal/storage"
 )
 
 type Request struct {
@@ -26,15 +28,12 @@ type Response struct {
 	Alias string `json:"alias,omitempty"`
 }
 
-// TODO: move to config if needed
-const aliasLength = 6
-
 //go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=URLSaver
 type URLSaver interface {
 	SaveURL(urlToSave string, alias string) (int64, error)
 }
 
-func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
+func New(log *slog.Logger, urlSaver URLSaver, srv *http.Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.save.New"
 
@@ -76,8 +75,35 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 		}
 
 		alias := req.Alias
+		aliasLength := 1
+		pointerOne, pointerTwo, pointerThree, pointerFour := -1, -1, -1, -1
+
 		if alias == "" {
-			alias = random.NewRandomString(aliasLength)
+			// Используем switch для выбора нужной функции в зависимости от aliasLength
+			switch aliasLength {
+			case 1:
+				alias = generatingalias.NewGeneratedAliasOneSize(&aliasLength, &pointerOne)
+			case 2:
+				alias = generatingalias.NewGeneratedAliasTwoSize(&aliasLength, &pointerOne, &pointerTwo)
+			case 3:
+				alias = generatingalias.NewGeneratedAliasThreeSize(&aliasLength, &pointerOne, &pointerTwo, &pointerThree)
+			case 4:
+				alias = generatingalias.NewGeneratedAliasFourSize(&pointerOne, &pointerTwo, &pointerThree, &pointerFour)
+			default:
+				log.Info("Stopping server due to invalid or too long aliasLength")
+
+				// Настроим тайм-аут для корректной остановки сервера
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				if err := srv.Shutdown(ctx); err != nil {
+					log.Error("Failed to stop server", sl.Err(err))
+					return
+				}
+
+				log.Info("Server stopped successfully")
+				return // Закрытие функции, после того как сервер был остановлен
+			}
 		}
 
 		id, err := urlSaver.SaveURL(req.URL, alias)
