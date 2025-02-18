@@ -51,8 +51,6 @@ func main() {
 	router.Use(middleware.URLFormat)
 
 	// Добавляем маршрут Swagger
-	router.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL("http://localhost:8082/swagger/doc.json")))
-
 	srv := &http.Server{
 		Addr:         cfg.Address,
 		Handler:      router,
