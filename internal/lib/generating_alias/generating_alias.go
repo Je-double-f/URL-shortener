@@ -4,73 +4,72 @@ const char = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 func NewGeneratedAliasOneSize(size *int, pointerOne *int) string {
 	for *pointerOne < len(char) {
+		result := string(char[*pointerOne])
 		*pointerOne++
-		return string(char[*pointerOne])
-
+		return result
 	}
 
-	*pointerOne, *size = -1, 2
-	return ""
+	*pointerOne = 0
+	*size = 2
+	return "full"
 }
 
 func NewGeneratedAliasTwoSize(size *int, pointerOne *int, pointerTwo *int) string {
 	for *pointerOne < len(char) {
-		*pointerOne++
 		for *pointerTwo < len(char) {
+			result := string(char[*pointerOne]) + string(char[*pointerTwo])
 			*pointerTwo++
-			return string(char[*pointerOne]) + string(char[*pointerTwo])
-
+			return result
 		}
-
-		*pointerTwo = -1
+		*pointerTwo = 0
+		*pointerOne++
 	}
 
-	*pointerOne, *size = -1, 3
-	return ""
+	*pointerOne, *pointerTwo = 0, 0
+	*size = 3
+	return "full"
 }
 
 func NewGeneratedAliasThreeSize(size *int, pointerOne *int, pointerTwo *int, pointerThree *int) string {
 	for *pointerOne < len(char) {
-		*pointerOne++
 		for *pointerTwo < len(char) {
-			*pointerTwo++
 			for *pointerThree < len(char) {
+				result := string(char[*pointerOne]) + string(char[*pointerTwo]) + string(char[*pointerThree])
 				*pointerThree++
-				return string(char[*pointerOne]) + string(char[*pointerTwo]) + string(char[*pointerThree])
-
+				return result
 			}
-			*pointerThree = -1
-
+			*pointerThree = 0
+			*pointerTwo++
 		}
-		*pointerTwo = -1
-
+		*pointerTwo = 0
+		*pointerOne++
 	}
 
-	*pointerOne, *size = -1, 4
-	return ""
+	*pointerOne, *pointerTwo, *pointerThree = 0, 0, 0
+	*size = 4
+	return "full"
 }
 
-func NewGeneratedAliasFourSize(pointerOne *int, pointerTwo *int, pointerThree *int, pointerFour *int) string {
+func NewGeneratedAliasFourSize(size *int, pointerOne *int, pointerTwo *int, pointerThree *int, pointerFour *int) string {
 	for *pointerOne < len(char) {
-		*pointerOne++
 		for *pointerTwo < len(char) {
-			*pointerTwo++
 			for *pointerThree < len(char) {
-				*pointerThree++
 				for *pointerFour < len(char) {
+					result := string(char[*pointerOne]) + string(char[*pointerTwo]) + string(char[*pointerThree]) + string(char[*pointerFour])
 					*pointerFour++
-					return string(char[*pointerOne]) + string(char[*pointerTwo]) + string(char[*pointerThree]) + string(char[*pointerFour])
-
+					return result
 				}
-				*pointerFour = -1
-
+				*pointerFour = 0
+				*pointerThree++
 			}
-			*pointerThree = -1
-
+			*pointerThree = 0
+			*pointerTwo++
 		}
-		*pointerTwo = -1
-
+		*pointerTwo = 0
+		*pointerOne++
 	}
 
-	return ""
+	*pointerOne, *pointerTwo, *pointerThree, *pointerFour = 0, 0, 0, 0
+	*size = 5
+	return "full"
 }

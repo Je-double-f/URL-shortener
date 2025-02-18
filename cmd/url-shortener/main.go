@@ -8,8 +8,11 @@ import (
 	"syscall"
 	"time"
 
+	// _ "url-shortener/docs" // Подключаем сгенерированные Swagger-документы
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/exp/slog"
 
 	"url-shortener/internal/config"
@@ -29,14 +32,9 @@ const (
 
 func main() {
 	cfg := config.MustLoad()
-
 	log := setupLogger(cfg.Env)
 
-	log.Info(
-		"starting url-shortener",
-		slog.String("env", cfg.Env),
-		slog.String("version", "123"),
-	)
+	log.Info("starting url-shortener", slog.String("env", cfg.Env), slog.String("version", "123"))
 	log.Debug("debug messages are enabled")
 
 	storage, err := sqlite.New(cfg.StoragePath)
@@ -46,12 +44,14 @@ func main() {
 	}
 
 	router := chi.NewRouter()
-
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Logger)
 	router.Use(mwLogger.New(log))
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
+
+	// Добавляем маршрут Swagger
+	router.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL("http://localhost:8082/swagger/doc.json")))
 
 	srv := &http.Server{
 		Addr:         cfg.Address,
@@ -60,19 +60,18 @@ func main() {
 		WriteTimeout: cfg.HTTPServer.Timeout,
 		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
 	}
+
 	router.Route("/url", func(r chi.Router) {
 		r.Use(middleware.BasicAuth("url-shortener", map[string]string{
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
 		}))
 
 		r.Post("/", save.New(log, storage, srv))
-		// TODO: add DELETE /url/{id}
 	})
 
 	router.Get("/{alias}", redirect.New(log, storage))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
-
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
@@ -83,21 +82,16 @@ func main() {
 	}()
 
 	log.Info("server started")
-
 	<-done
 	log.Info("stopping server")
 
-	// TODO: move timeout to config
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Error("failed to stop server", sl.Err(err))
-
 		return
 	}
-
-	// TODO: close storage
 
 	log.Info("server stopped")
 }
@@ -109,17 +103,11 @@ func setupLogger(env string) *slog.Logger {
 	case envLocal:
 		log = setupPrettySlog()
 	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
-	default: // If env config is invalid, set prod settings by default due to security
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	default:
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	}
 
 	return log
@@ -131,8 +119,6 @@ func setupPrettySlog() *slog.Logger {
 			Level: slog.LevelDebug,
 		},
 	}
-
 	handler := opts.NewPrettyHandler(os.Stdout)
-
 	return slog.New(handler)
 }
