@@ -21,6 +21,19 @@ type URLGetter interface {
 	GetURL(alias string) (string, error)
 }
 
+type Response struct {
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
+
+// @Summary Redirect to original URL
+// @Description Перенаправляет пользователя на оригинальный URL по его короткому идентификатору
+// @Param alias path string true "Short URL alias"
+// @Success 200 "Successfully redirected"
+// @Success 302 "Moved Temporarily"
+// @Failure 404 {object} Response
+// @Failure 500 {object} Response
+// @Router /{alias} [get]
 func New(log *slog.Logger, urlGetter URLGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.url.redirect.New"

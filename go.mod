@@ -15,6 +15,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/http-swagger v1.3.4
+	github.com/swaggo/swag v1.16.4
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 )
 
@@ -52,7 +53,6 @@ require (
 	github.com/sergi/go-diff v1.0.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
-	github.com/swaggo/swag v1.16.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.34.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect

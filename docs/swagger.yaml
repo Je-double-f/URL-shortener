@@ -1,0 +1,80 @@
+basePath: /
+definitions:
+  redirect.Response:
+    properties:
+      error:
+        type: string
+      status:
+        type: string
+    type: object
+  save.Request:
+    properties:
+      alias:
+        type: string
+      url:
+        type: string
+    required:
+    - url
+    type: object
+host: localhost:8082
+info:
+  contact:
+    name: API Support
+  description: API для сокращения URL.
+  termsOfService: https://example.com/terms/
+  title: URL Shortener API
+  version: "1.0"
+paths:
+  /:
+    post:
+      consumes:
+      - application/json
+      description: Принимает длинный URL и создает для него короткую версию
+      parameters:
+      - description: URL для сокращения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/save.Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/redirect.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/redirect.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/redirect.Response'
+      summary: Создать сокращенный URL
+  /{alias}:
+    get:
+      description: Перенаправляет пользователя на оригинальный URL по его короткому
+        идентификатору
+      parameters:
+      - description: Short URL alias
+        in: path
+        name: alias
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Successfully redirected
+        "302":
+          description: Moved Temporarily
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/redirect.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/redirect.Response'
+      summary: Redirect to original URL
+swagger: "2.0"

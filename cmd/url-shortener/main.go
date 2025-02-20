@@ -8,11 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	// _ "url-shortener/docs" // Подключаем сгенерированные Swagger-документы
+	_ "url-shortener/docs" // Подключаем сгенерированные Swagger-документы
+
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/exp/slog"
 
 	"url-shortener/internal/config"
@@ -30,6 +31,13 @@ const (
 	envProd  = "prod"
 )
 
+// @title URL Shortener API
+// @version 1.0
+// @description API для сокращения URL.
+// @termsOfService https://example.com/terms/
+// @contact.name API Support
+// @host localhost:8082
+// @BasePath /
 func main() {
 	cfg := config.MustLoad()
 	log := setupLogger(cfg.Env)
@@ -43,6 +51,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = sqlite.SaveGeneratingAlias(cfg.StoragePath)
+	if err != nil {
+		log.Error("failed to init storage { alias_value }", sl.Err(err2))
+		os.Exit(1)
+	}
+
+	// deletedURL, err := sqlite.DeleteURL()
+	// log.Info("{ deletedURL } was successfully deleted")
+	// if err != nil {'
+	// 	log.Error("failed while deleting URL")
+	// }
+
+	// updatedURL, err := sqlite.UpdateURL(, )
+	// log.Info("{ updatedURL } was successfully updated")
+	// if err != nil {
+	// 	log.Error("failed while updating URL")
+	// }
+
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Logger)
@@ -51,6 +77,8 @@ func main() {
 	router.Use(middleware.URLFormat)
 
 	// Добавляем маршрут Swagger
+	router.Get("/swagger/*", httpSwagger.WrapHandler)
+
 	srv := &http.Server{
 		Addr:         cfg.Address,
 		Handler:      router,
